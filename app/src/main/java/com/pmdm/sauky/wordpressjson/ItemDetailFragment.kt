@@ -32,6 +32,7 @@ class ItemDetailFragment : Fragment() {
                 // to load content from a content provider.
                 item = DummyContent.ITEM_MAP[it.getString(ARG_ITEM_ID)]
                 activity?.toolbar_layout?.title = item?.content
+                activity?.toolbar_layout?.title = item?.title
             }
         }
     }
@@ -43,6 +44,7 @@ class ItemDetailFragment : Fragment() {
         // Show the dummy content as text in a TextView.
         item?.let {
             rootView.item_detail.text = it.details
+            rootView.item_detail.text = it.resumen
         }
 
         return rootView
