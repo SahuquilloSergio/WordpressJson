@@ -5,15 +5,20 @@ import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.RecyclerView
 import android.support.design.widget.Snackbar
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-
 import com.pmdm.sauky.wordpressjson.dummy.DummyContent
 import kotlinx.android.synthetic.main.activity_item_list.*
 import kotlinx.android.synthetic.main.item_list_content.view.*
 import kotlinx.android.synthetic.main.item_list.*
+import org.jetbrains.anko.doAsync
+import org.jetbrains.anko.uiThread
+import org.json.JSONArray
+import java.net.URL
+import com.pmdm.sauky.wordpressjson.dummy.DummyItem
 
 /**
  * An activity representing a list of Pings. This activity
@@ -51,23 +56,60 @@ class ItemListActivity : AppCompatActivity() {
             twoPane = true
         }
 
-        setupRecyclerView(item_list)
+        peticionPosts()
+
+    }
+
+    /**
+     * Conecta y parsea el JSON
+     */
+    private fun peticionPosts() {
+        // corutina en un hilo diferente
+        val doAsync = doAsync {
+            // capturamos los errores de la peticion
+            try {
+                // peticion a un servidor rest que devuelve un json generico
+                val respuesta = URL("http://18.224.8.107/wp5/?rest_route=/wp/v2/posts").readText()
+                // parsing data
+                // sabemos que recibimos un array de objetos JSON
+                val miJSONArray = JSONArray(respuesta)
+                // recorremos el Array
+                for (jsonIndex in 0..(miJSONArray.length() - 1)) {
+                    val idpost = miJSONArray.getJSONObject(jsonIndex).getString("id")
+                    val titulo = miJSONArray.getJSONObject(jsonIndex).getString("title")
+                    val resumen = miJSONArray.getJSONObject(jsonIndex).getString("content")
+                    // asignamos los valores en el constructor de la data class 'DummyItem'
+                    // añadimos al array list
+                    DummyContent.addItem(DummyItem(idpost, titulo, resumen))
+                }
+                // una vez que cargamos los posts, recargamos las vistas en el layout
+                uiThread {
+                    setupRecyclerView(item_list)
+                }
+
+
+            }catch (e: Exception){
+                Log.d(DummyContent.LOGTAG, "Algo va mal: $e")
+            }
+        }
     }
 
     private fun setupRecyclerView(recyclerView: RecyclerView) {
         recyclerView.adapter = SimpleItemRecyclerViewAdapter(this, DummyContent.ITEMS, twoPane)
     }
 
-    class SimpleItemRecyclerViewAdapter(private val parentActivity: ItemListActivity,
-                                        private val values: List<DummyContent.DummyItem>,
-                                        private val twoPane: Boolean) :
+    class SimpleItemRecyclerViewAdapter(
+            private val parentActivity: ItemListActivity,
+            private val values: List<DummyItem>,
+            private val twoPane: Boolean
+        ) :
             RecyclerView.Adapter<SimpleItemRecyclerViewAdapter.ViewHolder>() {
 
         private val onClickListener: View.OnClickListener
 
         init {
             onClickListener = View.OnClickListener { v ->
-                val item = v.tag as DummyContent.DummyItem
+                val item = v.tag as DummyItem
                 if (twoPane) {
                     val fragment = ItemDetailFragment().apply {
                         arguments = Bundle().apply {
